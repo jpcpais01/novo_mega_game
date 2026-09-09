@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { defaultRig, validateRig } from "../src/shared";
 import { prepareDeformation, deform } from "../src/mesh";
 import { normalizeMonster } from "../server/images";
-import { authorize, generate, analyze } from "../server/core";
+import { generate, analyze, status } from "../server/core";
 test("rig rejects wrong dimensions and out-of-image points, caps displacement", () => {
   const r = defaultRig();
   r.points[0].amplitude = 24;
@@ -67,12 +67,12 @@ test("background cleanup preserves enclosed pale details and real alpha", async 
     .toBuffer();
   assert.equal((await normalizeMonster(transparent)).cleaned, false);
 });
-test("server auth and generation/analysis contract with mocked provider, signed image and pixel validation", async () => {
+test("live generation and analysis need only the OpenRouter key, without access codes or tickets", async () => {
   const oldFetch = globalThis.fetch,
     oldKey = process.env.OPENROUTER_API_KEY,
     oldCode = process.env.GAME_ACCESS_CODE;
   process.env.OPENROUTER_API_KEY = "unit-test-key";
-  process.env.GAME_ACCESS_CODE = "unit-test-access";
+  delete process.env.GAME_ACCESS_CODE;
   const image = await sharp(
     Buffer.from(
       '<svg width="128" height="128"><rect x="30" y="30" width="68" height="68" fill="#9988aa"/></svg>',
@@ -109,8 +109,7 @@ test("server auth and generation/analysis contract with mocked provider, signed 
     });
   };
   try {
-    assert.throws(() => authorize("wrong"));
-    authorize("unit-test-access");
+    assert.equal(status().ready, true);
     const result = await generate({
       essence: "moon",
       secondary: "flora",
@@ -119,10 +118,8 @@ test("server auth and generation/analysis contract with mocked provider, signed 
     assert.equal(result.width, 128);
     const analysis = await analyze(result);
     assert.equal(analysis.rig.points.length, 4);
-    await assert.rejects(() =>
-      analyze({ ...result, image: result.image + "tampered" }),
-    );
-    assert.equal(calls.length, 3);
+    assert.equal("ticket" in result, false);
+    assert.equal(calls.length, 2);
   } finally {
     globalThis.fetch = oldFetch;
     if (oldKey === undefined) delete process.env.OPENROUTER_API_KEY;

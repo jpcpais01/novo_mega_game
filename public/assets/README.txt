@@ -1,1 +1,1 @@
-Demo art is original procedural vector artwork rasterized to PNG. It is explicitly marked demo in the app. Live generation uses OpenRouter Flare. Regenerate with npm run assets.
+Egg and PWA icons are original procedural artwork. Every companion is generated through OpenRouter. Test-only creature fixtures are outside the shipped app.

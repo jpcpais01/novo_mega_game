@@ -11,7 +11,11 @@ export async function saveCompanion(companion: Companion) {
 export async function getCompanions(): Promise<Companion[]> {
   return (await db)
     .getAll("companions")
-    .then((items) => items.sort((a, b) => b.createdAt - a.createdAt));
+    .then((items) =>
+      items
+        .filter((item) => !item.demo)
+        .sort((a, b) => b.createdAt - a.createdAt),
+    );
 }
 export async function deleteCompanion(id: string) {
   return (await db).delete("companions", id);

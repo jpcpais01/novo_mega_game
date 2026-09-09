@@ -33,7 +33,6 @@ import { registerSW } from "virtual:pwa-register";
 import {
   essences,
   essenceIds,
-  defaultRig,
   validateRig,
   type EssenceId,
   type Companion,
@@ -86,16 +85,12 @@ const state = {
   page: "hatchery",
   current: null as Companion | null,
   collection: [] as Companion[],
-  live: false,
-  ready: false,
-  access: "",
   sound: true,
   error: "",
   pending: null as null | {
     image: string;
     width: number;
     height: number;
-    ticket: string;
   },
   seed: 0,
   editor: false,
@@ -106,7 +101,7 @@ let audio: AudioContext | null = null;
 $("#app").innerHTML =
   `<div class="app-shell"><header class="topbar"><a class="brand" href="#" aria-label="Aetherkin hatchery" data-action="home"><span class="brand-mark">${icon("sparkles")}</span><span>Aetherkin<span class="brand-sub">A WORLD WAITING TO HATCH</span></span></a><div class="top-actions"><span class="season">${icon("moon-star")} The first awakening</span><button class="icon-button" data-action="sound" aria-label="Mute sound" id="sound-button">${icon("volume-2")}</button><button class="icon-button" data-action="settings" aria-label="Open settings">${icon("settings-2")}</button><span class="avatar">J<span></span></span></div></header>
 <main><section class="page-heading"><div><div class="eyebrow"><span></span> YOUR LITTLE CORNER OF THE COSMOS</div><h1 id="page-title">The Hatchery<span>✧</span></h1><p id="page-description">A little essence. A little wonder. Someone entirely new.</p></div><button class="text-button install-button" data-action="install">${icon("download")} Take the magic with you ${icon("arrow-up-right")}</button></section>
-<section class="game-layout" id="hatchery"><div class="experience"><div class="arena" id="arena"><div id="scene"></div><div class="arena-top"><span class="location-tag">${icon("sparkles")} THE SUMMONING GLADE</span><span class="mode-tag" id="mode-tag">DEMO</span></div><div class="orbital-word">a new story begins</div><div class="stage-caption" aria-live="polite"><span class="micro-label" id="stage-label">CELESTIAL ORIGIN</span><h2 id="stage-name">Moonstone egg</h2><p id="stage-description">Something wonderful stirs within.</p></div><button class="arena-tool" id="motion-button" data-action="motion" aria-label="Edit idle animation" hidden>${icon("sliders-horizontal")}</button><div class="hatch-flash" id="hatch-flash"></div></div><div class="experience-footer"><span>${icon("heart")} Every little soul is one of a kind.</span><button data-action="guide" class="text-button">How it works ${icon("arrow-up-right")}</button></div></div><aside class="ritual-panel" id="ritual"></aside></section>
+<section class="game-layout" id="hatchery"><div class="experience"><div class="arena" id="arena"><div id="scene"></div><div class="arena-top"><span class="location-tag">${icon("sparkles")} THE SUMMONING GLADE</span><span class="mode-tag" id="mode-tag">LIVE HATCHERY</span></div><div class="orbital-word">a new story begins</div><div class="stage-caption" aria-live="polite"><span class="micro-label" id="stage-label">CELESTIAL ORIGIN</span><h2 id="stage-name">Moonstone egg</h2><p id="stage-description">Something wonderful stirs within.</p></div><button class="arena-tool" id="motion-button" data-action="motion" aria-label="Edit idle animation" hidden>${icon("sliders-horizontal")}</button><div class="hatch-flash" id="hatch-flash"></div></div><div class="experience-footer"><span>${icon("heart")} Every little soul is one of a kind.</span><button data-action="guide" class="text-button">How it works ${icon("arrow-up-right")}</button></div></div><aside class="ritual-panel" id="ritual"></aside></section>
 <section id="collection" class="collection" hidden></section><section id="journal" class="journal" hidden></section></main>
 <nav class="bottom-nav" aria-label="Game navigation"><button class="active" data-action="home">${icon("egg")}<span>Hatchery</span></button><button data-action="collection">${icon("heart")}<span>Companions</span><b id="collection-count">0</b></button><button data-action="journal">${icon("book-open")}<span>Essence journal</span></button><span class="nav-note">AETHERKIN <span>·</span> EARLY WORLDS / 001</span></nav></div><dialog id="dialog"><div id="dialog-content"></div></dialog><div id="toast" role="status"></div>`;
 function refreshIcons() {
@@ -133,7 +128,7 @@ function render() {
   document.documentElement.style.setProperty("--essence", e.color);
   $("#ritual").innerHTML =
     monster && state.current
-      ? `<div class="panel-heading"><span class="eyebrow">A NEW CONNECTION</span><span class="small-glyph">✧</span></div><h2>Hello, ${escape(state.current.name)}.</h2><p class="panel-copy">${e.description} Your companion is ready for a world of little adventures.</p><div class="lineage"><span>${icon(e.icon)} ${e.type}</span>${state.selected[1] ? `<span>${icon(essences[state.selected[1]].icon)} ${essences[state.selected[1]].type}</span>` : ""}<span>${state.current.demo ? "Demo companion" : "Unique companion"}</span></div><div class="section-label">SOUL SIGNATURE <span>${e.trait}</span></div>${statMarkup()}<div class="bond-note">${icon("heart")} Safely tucked into your collection.</div><button class="primary-button" data-action="new">${icon("plus")} Hatch another soul</button><button class="secondary-button" data-action="motion">${icon("sliders-horizontal")} Explore idle movement</button>`
+      ? `<div class="panel-heading"><span class="eyebrow">A NEW CONNECTION</span><span class="small-glyph">✧</span></div><h2>Hello, ${escape(state.current.name)}.</h2><p class="panel-copy">${e.description} Your companion is ready for a world of little adventures.</p><div class="lineage"><span>${icon(e.icon)} ${e.type}</span>${state.selected[1] ? `<span>${icon(essences[state.selected[1]].icon)} ${essences[state.selected[1]].type}</span>` : ""}<span>Unique companion</span></div><div class="section-label">SOUL SIGNATURE <span>${e.trait}</span></div>${statMarkup()}<div class="bond-note">${icon("heart")} Safely tucked into your collection.</div><button class="primary-button" data-action="new">${icon("plus")} Hatch another soul</button><button class="secondary-button" data-action="motion">${icon("sliders-horizontal")} Explore idle movement</button>`
       : `<div class="panel-heading"><span class="eyebrow">THE ART OF POSSIBILITY</span><span class="small-glyph">✧</span></div><h2>Shape a little soul.</h2><p class="panel-copy">Choose up to two essences.<br>See who the universe sends back.</p><div class="section-label">ELEMENTAL ESSENCES <span>${state.selected.length} / 2 infused</span></div><div class="essence-grid">${essenceIds
           .map((id) => {
             const item = essences[id],
@@ -142,15 +137,8 @@ function render() {
           })
           .join(
             "",
-          )}</div><div class="infusion"><span>${icon(e.icon)}</span><i></i><span class="${state.selected[1] ? "" : "empty-slot"}">${icon(state.selected[1] ? essences[state.selected[1]].icon : "plus")}</span><p>${state.selected.length === 1 ? "A pure little possibility" : "Two essences. One new story."}</p></div><div class="section-label">EGG POTENTIAL <span>${state.selected.length === 1 ? "Pure origin" : "Blended origin"}</span></div>${statMarkup()}${state.error ? `<div class="error-message" role="alert">${escape(state.error)}</div>` : ""}<button class="primary-button ${busy ? "busy" : ""}" id="hatch-button" data-action="hatch" ${busy ? "disabled" : ""}>${icon(busy ? "sparkles" : "wand-sparkles")} ${state.phase === "incubating" ? "A little soul is forming…" : state.phase === "analyzing" ? "Finding its first heartbeat…" : state.phase === "hatching" ? "A new story begins…" : state.pending ? "Retry its first heartbeat" : "Awaken your Aetherkin"} ${busy ? "" : icon("arrow-up-right")}</button><p class="generation-note">${state.live ? "A unique creature, dreamed just for you." : "Demo hatch · explore without using credits"}</p>`;
-  $("#mode-tag").textContent =
-    state.current && monster
-      ? state.current.demo
-        ? "DEMO COMPANION"
-        : "AI COMPANION"
-      : state.live
-        ? "LIVE HATCHERY"
-        : "PLAYABLE DEMO";
+          )}</div><div class="infusion"><span>${icon(e.icon)}</span><i></i><span class="${state.selected[1] ? "" : "empty-slot"}">${icon(state.selected[1] ? essences[state.selected[1]].icon : "plus")}</span><p>${state.selected.length === 1 ? "A pure little possibility" : "Two essences. One new story."}</p></div><div class="section-label">EGG POTENTIAL <span>${state.selected.length === 1 ? "Pure origin" : "Blended origin"}</span></div>${statMarkup()}${state.error ? `<div class="error-message" role="alert">${escape(state.error)}</div>` : ""}<button class="primary-button ${busy ? "busy" : ""}" id="hatch-button" data-action="hatch" ${busy ? "disabled" : ""}>${icon(busy ? "sparkles" : "wand-sparkles")} ${state.phase === "incubating" ? "A little soul is forming…" : state.phase === "analyzing" ? "Finding its first heartbeat…" : state.phase === "hatching" ? "A new story begins…" : state.pending ? "Retry its first heartbeat" : "Awaken your Aetherkin"} ${busy ? "" : icon("arrow-up-right")}</button><p class="generation-note">A unique creature, dreamed just for you.</p>`;
+  $("#mode-tag").textContent = monster ? "AI COMPANION" : "LIVE HATCHERY";
   $("#stage-label").textContent = monster
     ? e.trait.toUpperCase()
     : `${e.type.toUpperCase()} ORIGIN`;
@@ -167,9 +155,7 @@ function render() {
   $("#stage-description").textContent = monster
     ? "A small soul. An extraordinary beginning."
     : busy
-      ? state.live
-        ? "The magic takes a moment. Stay a little longer."
-        : "A little magic is on its way."
+      ? "The magic takes a moment. Stay a little longer."
       : "Something wonderful stirs within.";
   $("#motion-button").hidden = !monster;
   $("#collection-count").textContent = String(state.collection.length);
@@ -216,7 +202,6 @@ async function api<T>(path: string, body: unknown): Promise<T> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-hatchery-code": state.access,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(path === "generate" ? 280_000 : 120_000),
@@ -237,7 +222,7 @@ async function api<T>(path: string, body: unknown): Promise<T> {
 }
 async function hatch() {
   if (!["egg", "error"].includes(state.phase)) return;
-  if (state.live && !navigator.onLine) {
+  if (!navigator.onLine) {
     toast(
       "New creatures need a connection. Your saved companions are available offline.",
     );
@@ -249,29 +234,22 @@ async function hatch() {
   render();
   chime();
   try {
-    let image: string,
-      rig = defaultRig();
     state.seed = state.pending
       ? state.seed
       : Math.floor(Math.random() * 2147483647);
-    if (state.live) {
-      const pending =
-        state.pending ??
-        (await api<NonNullable<typeof state.pending>>("generate", {
-          essence: state.selected[0],
-          secondary: state.selected[1] || null,
-          seed: state.seed,
-        }));
-      state.pending = pending;
-      state.phase = "analyzing";
-      render();
-      image = pending.image;
-      const result = await api<{ rig: unknown }>("analyze", pending);
-      rig = validateRig(result.rig, pending.width, pending.height);
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      image = `/assets/companion-${state.selected[0]}.png`;
-    }
+    const pending =
+      state.pending ??
+      (await api<NonNullable<typeof state.pending>>("generate", {
+        essence: state.selected[0],
+        secondary: state.selected[1] || null,
+        seed: state.seed,
+      }));
+    state.pending = pending;
+    state.phase = "analyzing";
+    render();
+    const image = pending.image;
+    const result = await api<{ rig: unknown }>("analyze", pending);
+    const rig = validateRig(result.rig, pending.width, pending.height);
     const names: Record<EssenceId, string[]> = {
       moon: ["Lumi", "Wisp", "Mallow", "Nova"],
       flora: ["Fern", "Clover", "Pip", "Moss"],
@@ -286,7 +264,7 @@ async function hatch() {
       image,
       rig,
       createdAt: Date.now(),
-      demo: !state.live,
+      demo: false,
       seed: state.seed,
     };
     await scene.loadCreature(image, rig);
@@ -377,7 +355,7 @@ function go(page: string) {
 }
 function renderCollection() {
   $("#collection").innerHTML = state.collection.length
-    ? `<div class="collection-grid">${state.collection.map((c) => `<button class="companion-card" data-companion="${c.id}" style="--card-color:${essences[c.essence].color}"><span class="card-overline">${essences[c.essence].type} ${c.demo ? "· DEMO" : ""}</span><img src="${c.image}" alt="${escape(c.name)}" width="300" height="300" loading="lazy"/><div><span><strong>${escape(c.name)}</strong><small>${essences[c.essence].trait}</small></span>${icon("arrow-up-right")}</div></button>`).join("")}</div><p class="collection-footnote">Companions are saved on this device. Clearing site data removes this collection.</p>`
+    ? `<div class="collection-grid">${state.collection.map((c) => `<button class="companion-card" data-companion="${c.id}" style="--card-color:${essences[c.essence].color}"><span class="card-overline">${essences[c.essence].type} </span><img src="${c.image}" alt="${escape(c.name)}" width="300" height="300" loading="lazy"/><div><span><strong>${escape(c.name)}</strong><small>${essences[c.essence].trait}</small></span>${icon("arrow-up-right")}</div></button>`).join("")}</div><p class="collection-footnote">Companions are saved on this device. Clearing site data removes this collection.</p>`
     : `<div class="empty-collection">${icon("egg")}<h2>Your first little friend is waiting.</h2><p>A touch of essence is all it takes to begin.</p><button class="primary-button" data-action="home">Visit the hatchery ${icon("arrow-up-right")}</button></div>`;
 }
 function renderJournal() {
@@ -407,7 +385,7 @@ function closeModal() {
 }
 function settings() {
   modal(
-    `<span class="eyebrow">MAKE YOURSELF AT HOME</span><h2>A little more magic.</h2><div class="setting-row"><div><strong>Live AI hatching</strong><small>${state.ready ? "Create unique creatures with your hatchery access code." : "Demo is ready. Live hatching needs server setup."}</small></div><input type="checkbox" id="live-toggle" aria-label="Enable live AI hatching" ${state.live ? "checked" : ""} ${!state.ready ? "disabled" : ""}/></div><label class="field-label" for="access-code">Hatchery access code</label><input id="access-code" type="password" autocomplete="off" placeholder="Your private hatchery code" value="${escape(state.access)}"/><p class="settings-help">${state.ready ? "The access code stays in memory for this session." : "Set OPENROUTER_API_KEY and GAME_ACCESS_CODE in .env.local or Vercel, then restart or redeploy. API keys stay on the server."}</p><div class="setting-row"><div><strong>Gentle motion</strong><small>Reduce movement and visual effects.</small></div><input type="checkbox" id="reduced-toggle" aria-label="Reduce movement" ${scene.reduced ? "checked" : ""}/></div><div class="setting-row"><div><strong>Sound</strong><small>Soft notes to welcome a new soul.</small></div><input type="checkbox" id="sound-toggle" aria-label="Enable sound" ${state.sound ? "checked" : ""}/></div><button class="primary-button" data-action="save-settings">${icon("check")} All set</button>`,
+    `<span class="eyebrow">MAKE YOURSELF AT HOME</span><h2>A little more magic.</h2><div class="setting-row"><div><strong>Gentle motion</strong><small>Reduce movement and visual effects.</small></div><input type="checkbox" id="reduced-toggle" aria-label="Reduce movement" ${scene.reduced ? "checked" : ""}/></div><div class="setting-row"><div><strong>Sound</strong><small>Soft notes to welcome a new soul.</small></div><input type="checkbox" id="sound-toggle" aria-label="Enable sound" ${state.sound ? "checked" : ""}/></div><button class="primary-button" data-action="save-settings">${icon("check")} All set</button>`,
   );
 }
 function motion() {
@@ -447,7 +425,7 @@ async function install() {
     installPrompt = null;
   } else
     modal(
-      `<span class="eyebrow">YOUR POCKET HATCHERY</span><h2>Take the magic with you.</h2><p>On Android, open your browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p><p>On iPhone, use Safari’s Share menu, then <strong>Add to Home Screen</strong>.</p><p class="settings-help">Once loaded, the demo and saved companions work offline. New AI creatures need an internet connection.</p><button class="primary-button" data-action="close">${icon("check")} Got it</button>`,
+      `<span class="eyebrow">YOUR POCKET HATCHERY</span><h2>Take the magic with you.</h2><p>On Android, open your browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p><p>On iPhone, use Safari’s Share menu, then <strong>Add to Home Screen</strong>.</p><p class="settings-help">Once loaded, saved companions work offline. New AI creatures need an internet connection.</p><button class="primary-button" data-action="close">${icon("check")} Got it</button>`,
     );
 }
 document.addEventListener("click", async (event) => {
@@ -519,8 +497,6 @@ document.addEventListener("click", async (event) => {
       toast("Let this hatch finish before changing its settings.");
       return;
     }
-    state.access = $<HTMLInputElement>("#access-code").value;
-    state.live = $<HTMLInputElement>("#live-toggle").checked;
     state.sound = $<HTMLInputElement>("#sound-toggle").checked;
     scene.reduced = $<HTMLInputElement>("#reduced-toggle").checked;
     state.pending = null;
@@ -548,7 +524,7 @@ document.addEventListener("click", async (event) => {
   }
   if (action === "guide")
     modal(
-      `<span class="eyebrow">A BEGINNER’S LITTLE GUIDE</span><h2>From a spark to a soul.</h2><div class="guide-step"><b>01</b><div><strong>Choose your essences</strong><p>Use one for a pure origin, or mix two to shape its appearance and personality.</p></div></div><div class="guide-step"><b>02</b><div><strong>Wake the egg</strong><p>In live mode, a new creature is illustrated for your egg. Demo mode uses four original sample companions.</p></div></div><div class="guide-step"><b>03</b><div><strong>Meet your companion</strong><p>Its illustration breathes through gentle mesh movement. Your collection remembers it on this device.</p></div></div><button class="primary-button" data-action="close">Let’s make a little magic ${icon("sparkles")}</button>`,
+      `<span class="eyebrow">A BEGINNER’S LITTLE GUIDE</span><h2>From a spark to a soul.</h2><div class="guide-step"><b>01</b><div><strong>Choose your essences</strong><p>Use one for a pure origin, or mix two to shape its appearance and personality.</p></div></div><div class="guide-step"><b>02</b><div><strong>Wake the egg</strong><p>A new creature is illustrated for your egg, then given its own gentle idle movement.</p></div></div><div class="guide-step"><b>03</b><div><strong>Meet your companion</strong><p>Its illustration breathes through gentle mesh movement. Your collection remembers it on this device.</p></div></div><button class="primary-button" data-action="close">Let’s make a little magic ${icon("sparkles")}</button>`,
     );
 });
 document.addEventListener("input", (e) => {
@@ -598,7 +574,7 @@ window.render_game_to_text = () =>
     page: state.page,
     phase: state.phase,
     essences: state.selected,
-    mode: state.live ? "live" : "demo",
+    mode: "live",
     companion: state.current
       ? { name: state.current.name, rig: state.current.rig }
       : null,
@@ -629,12 +605,6 @@ try {
   toast(
     "Device storage is unavailable. Companions may not persist after closing.",
   );
-}
-try {
-  const response = await fetch("/api/status");
-  if (response.ok) state.ready = Boolean((await response.json()).ready);
-} catch {
-  /* Demo and stored companions work offline. */
 }
 render();
 registerSW({

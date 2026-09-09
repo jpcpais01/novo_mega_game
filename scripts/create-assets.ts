@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { mkdir, writeFile } from "node:fs/promises";
 await mkdir("public/assets", { recursive: true });
+await mkdir("tests/fixtures", { recursive: true });
 const egg = `<svg xmlns="http://www.w3.org/2000/svg" width="768" height="768" viewBox="0 0 768 768"><defs>
 <radialGradient id="shell" cx="32%" cy="28%" r="80%"><stop stop-color="#fff7f1"/><stop offset=".27" stop-color="#e4d6f4"/><stop offset=".65" stop-color="#bca2d7"/><stop offset="1" stop-color="#6f598c"/></radialGradient>
 <linearGradient id="gold" x2="1" y2="1"><stop stop-color="#fff5d5"/><stop offset=".45" stop-color="#dfc398"/><stop offset="1" stop-color="#987c69"/></linearGradient>
@@ -54,7 +55,7 @@ for (const [name, [light, mid, dark, gold, wing]] of Object.entries(palettes)) {
 </svg>`;
   await sharp(Buffer.from(creature))
     .png()
-    .toFile(`public/assets/companion-${name}.png`);
+    .toFile(`tests/fixtures/companion-${name}.png`);
 }
 for (const size of [192, 512]) {
   const icon = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" rx="100" fill="#242638"/><circle cx="256" cy="256" r="175" fill="none" stroke="#ad96d1" stroke-width="2"/><path d="M256 116C201 116 142 236 142 307a114 114 0 00228 0C370 236 311 116 256 116" fill="#cbb6e7"/><path d="M266 184L206 276h63l-34 83 82-127h-64z" fill="#fff1c9"/></svg>`;
@@ -65,6 +66,6 @@ for (const size of [192, 512]) {
 }
 await writeFile(
   "public/assets/README.txt",
-  "Demo art is original procedural vector artwork rasterized to PNG. It is explicitly marked demo in the app. Live generation uses OpenRouter Flare. Regenerate with npm run assets.\n",
+  "Egg and PWA icons are procedural vector artwork rasterized to PNG. All companions in the game use live OpenRouter generation. Sample creature art is confined to tests/fixtures.\n",
 );
 console.log("Created egg, four demo creatures and PWA icons.");

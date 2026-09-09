@@ -1,4 +1,3 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { essences, hatchSchema, rigSchema, validateRig } from "../src/shared";
 import { normalizeMonster } from "./images";
@@ -13,35 +12,23 @@ export class ApiError extends Error {
 }
 const config = () => ({
   key: process.env.OPENROUTER_API_KEY,
-  access: process.env.GAME_ACCESS_CODE,
   image: process.env.IMAGE_MODEL || "openai/gpt-image-2.5-flare",
   vision: process.env.VISION_MODEL || "openai/gpt-5.6-luna",
 });
 export function status() {
   const c = config();
   return {
-    ready: Boolean(c.key && c.access),
+    ready: Boolean(c.key),
     imageModel: c.image,
     visionModel: c.vision,
   };
 }
-export function authorize(code: unknown) {
-  const c = config();
-  if (!c.key || !c.access)
+async function openrouter(path: string, body: unknown, timeout = 110_000) {
+  if (!config().key)
     throw new ApiError(
       503,
-      "Live hatching is not configured yet. You can explore the demo.",
+      "Set OPENROUTER_API_KEY on the server and redeploy to hatch a creature.",
     );
-  if (
-    typeof code !== "string" ||
-    !timingSafeEqual(
-      createHash("sha256").update(code).digest(),
-      createHash("sha256").update(c.access).digest(),
-    )
-  )
-    throw new ApiError(401, "That hatchery access code is not correct.");
-}
-async function openrouter(path: string, body: unknown, timeout = 110_000) {
   let response: Response;
   try {
     response = await fetch(`${API}${path}`, {
@@ -77,36 +64,8 @@ async function openrouter(path: string, body: unknown, timeout = 110_000) {
   }
   return json;
 }
-let capabilityCache: { id: string; until: number } | null = null;
-async function verifyVision() {
-  const id = config().vision;
-  if (capabilityCache?.id === id && capabilityCache.until > Date.now()) return;
-  const response = await fetch(`${API}/models`, {
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok)
-    throw new ApiError(
-      503,
-      "Could not check model capabilities. Please try again.",
-    );
-  const catalog = await response.json();
-  const model = catalog.data?.find((m: { id: string }) => m.id === id);
-  if (!model?.architecture?.input_modalities?.includes("image"))
-    throw new ApiError(
-      422,
-      "The configured analysis model cannot inspect images. Set VISION_MODEL to an image-capable model.",
-    );
-  capabilityCache = { id, until: Date.now() + 300_000 };
-}
-function signature(image: string, expires: number) {
-  return createHmac("sha256", config().key!)
-    .update(`${expires}:`)
-    .update(image)
-    .digest("hex");
-}
 export async function generate(body: unknown) {
   const input = hatchSchema.parse(body);
-  await verifyVision();
   const e = essences[input.essence],
     second = input.secondary ? essences[input.secondary] : null;
   const prompt = `Create ONE original adorable collectible fantasy creature game asset for Aetherkin, a premium cozy mobile monster-hatching game. ${e.type} is its dominant essence (${e.trait}: ${e.description}), ${second ? `with subtle ${second.type} secondary features` : "pure elemental lineage"}. Power ${e.power}, spirit ${e.spirit}, vitality ${e.vitality}. Variation seed ${input.seed}; use this to vary silhouette and markings. Full body, front view turned only 20 degrees, neutral standing pose, all feet visible, centered with 12% empty margin. An appealing rounded silhouette, large expressive eyes, detailed soft painterly 3D-inspired illustration, sophisticated ${e.color} palette, exquisite material shading and gentle rim lighting. Head, body and tail clearly readable; limbs slightly separated. No text, no border, no scenery, no props, no ground plane, no cast shadow. Transparent background if supported; otherwise completely uniform pale neutral #f7f6f2 background. Never draw a checkerboard. This is a single still illustration, not a spritesheet. Creature will later breathe with subtle mesh deformation.`;
@@ -126,29 +85,15 @@ export async function generate(body: unknown) {
   if (typeof b64 !== "string" || b64.length > 28_000_000)
     throw new ApiError(502, "The image provider returned an invalid image.");
   const image = await normalizeMonster(Buffer.from(b64, "base64"));
-  const expires = Date.now() + 30 * 60_000;
-  return { ...image, ticket: `${expires}.${signature(image.image, expires)}` };
+  return image;
 }
 const analyzeSchema = z.object({
   image: z.string().max(3_000_000).startsWith("data:image/png;base64,"),
   width: z.number().int().min(64).max(768),
   height: z.number().int().min(64).max(768),
-  ticket: z.string().max(100),
 });
 export async function analyze(body: unknown) {
-  const { image, width, height, ticket } = analyzeSchema.parse(body);
-  const [expires, proof] = ticket.split(".");
-  const stamp = Number(expires);
-  if (
-    !Number.isFinite(stamp) ||
-    stamp < Date.now() ||
-    !/^[a-f0-9]{64}$/.test(proof || "") ||
-    !timingSafeEqual(
-      Buffer.from(proof, "hex"),
-      Buffer.from(signature(image, stamp), "hex"),
-    )
-  )
-    throw new ApiError(401, "This hatch has expired. Please start a new egg.");
+  const { image, width, height } = analyzeSchema.parse(body);
   const schema = z.toJSONSchema(rigSchema);
   delete schema.$schema;
   const result = await openrouter("/chat/completions", {

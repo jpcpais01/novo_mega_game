@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "./types";
 import { ZodError } from "zod";
-import { ApiError, authorize, status, generate, analyze } from "./core";
+import { ApiError, status, generate, analyze } from "./core";
 export async function handle(
   route: string,
   req: VercelRequest,
@@ -14,7 +14,6 @@ export async function handle(
       res.setHeader("Allow", route === "status" ? "GET" : "POST");
       throw new ApiError(405, "Method not allowed.");
     }
-    authorize(req.headers["x-hatchery-code"]);
     const data =
       route === "generate"
         ? await generate(req.body)

@@ -14,6 +14,61 @@ const context = await browser.newContext({
   deviceScaleFactor: 1,
 });
 const page = await context.newPage();
+// Fixtures exist only in this test runner; the shipped game always calls live APIs.
+const fixture = await fs.readFile("tests/fixtures/companion-moon.png");
+const fixtureRig = {
+  width: 768,
+  height: 768,
+  anchors: [
+    { x: 307, y: 653 },
+    { x: 468, y: 653 },
+  ],
+  points: [
+    {
+      label: "Breathing",
+      x: 392,
+      y: 461,
+      radius: 207,
+      amplitude: 6,
+      direction: "breathe",
+      speed: 0.55,
+      phase: 0,
+    },
+    {
+      label: "Head",
+      x: 384,
+      y: 269,
+      radius: 177,
+      amplitude: 4,
+      direction: "horizontal",
+      speed: 0.35,
+      phase: 1,
+    },
+    {
+      label: "Tail",
+      x: 591,
+      y: 507,
+      radius: 138,
+      amplitude: 6,
+      direction: "vertical",
+      speed: 0.45,
+      phase: 3,
+    },
+  ],
+};
+await page.route("**/api/generate", (route) => {
+  assert.equal(route.request().headers()["x-hatchery-code"], undefined);
+  return route.fulfill({
+    json: {
+      image: `data:image/png;base64,${fixture.toString("base64")}`,
+      width: 768,
+      height: 768,
+    },
+  });
+});
+await page.route("**/api/analyze", (route) =>
+  route.fulfill({ json: { rig: fixtureRig } }),
+);
 page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push(m.text());
@@ -25,6 +80,13 @@ await page.waitForFunction(
     document.querySelector("canvas"),
 );
 await page.waitForTimeout(1000);
+assert.equal(
+  await page.evaluate(() => JSON.parse(window.render_game_to_text()).mode),
+  "live",
+);
+await page.click('[data-action="settings"]');
+assert.equal(await page.locator("#live-toggle, #access-code").count(), 0);
+await page.click('[data-action="close"]');
 await page.screenshot({ path: "output/qa/desktop-egg.png", fullPage: true });
 await page.click('[data-essence="flora"]');
 assert.deepEqual(
