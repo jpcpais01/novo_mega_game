@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { loadEnv, createServer as createViteServer } from "vite";
-import type { VercelRequest, VercelResponse } from "./types";
-import { handle } from "./handler";
+import type { VercelRequest, VercelResponse } from "./types.js";
+import { handle } from "./handler.js";
 Object.assign(process.env, loadEnv("development", process.cwd(), ""));
 const api = createServer(async (req, res) => {
   let body = "";

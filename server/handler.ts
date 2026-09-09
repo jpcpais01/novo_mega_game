@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from "./types";
+import type { VercelRequest, VercelResponse } from "./types.js";
 import { ZodError } from "zod";
-import { ApiError, status, generate, analyze } from "./core";
+import { ApiError, status, generate, analyze } from "./core.js";
 export async function handle(
   route: string,
   req: VercelRequest,

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { essences, hatchSchema, rigSchema, validateRig } from "../src/shared";
-import { normalizeMonster } from "./images";
+import { essences, hatchSchema, rigSchema, validateRig } from "../src/shared.js";
+import { normalizeMonster } from "./images.js";
 const API = "https://openrouter.ai/api/v1";
 export class ApiError extends Error {
   constructor(

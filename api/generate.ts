@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from "../server/types";
-import { handle } from "../server/handler";
+import type { VercelRequest, VercelResponse } from "../server/types.js";
+import { handle } from "../server/handler.js";
 export default (req: VercelRequest, res: VercelResponse) =>
   handle("generate", req, res);
